@@ -12,7 +12,7 @@ namespace QuizApp.Models
 
         public string Title { get; protected set; }
 
-        protected Quiz(string title)
+        public Quiz(string title)
         {
             Title = title;
         }

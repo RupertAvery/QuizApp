@@ -10,10 +10,7 @@ namespace QuizApp.Services
 
         public void AddTask(Task taskToAdd)
         {
-            Task newTask = Task.Factory.StartNew(() => taskToAdd);
-            _tasks.Add(newTask);
-            newTask.Wait();
-            _tasks.Remove(newTask);
+            _tasks.Add(taskToAdd);
         }
 
         public void RemoveTask(Task taskToRemove)

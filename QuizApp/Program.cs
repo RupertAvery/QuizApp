@@ -2,11 +2,13 @@
 using System.Reflection;
 using System.Threading.Tasks;
 using Autofac;
+using Microsoft.Extensions.Options;
 using QuizApp.Controllers;
 using QuizApp.Models;
 using QuizApp.Models.Menu;
 using QuizApp.Models.Menu.Interfaces;
 using QuizApp.Services;
+using QuizApp.Validators;
 using QuizApp.Views;
 
 namespace QuizApp
@@ -25,15 +27,30 @@ namespace QuizApp
         {
             using ILifetimeScope scope = Container.BeginLifetimeScope();
 
-            Menu menu = scope.Resolve<Menu>();
+            var menu = scope.Resolve<Menu>();
             var menuView = new MenuView();
 
             while(!menu.Exit)
             {
                 menuView.ShowMenu(menu);
-                IMenuOption menuAction = menu.SelectMenuOption();
-                Console.Clear();
-                menuAction?.Action(); 
+
+                if (!ConsoleEx.TryReadInt(out int input))
+                {
+                    Console.WriteLine("Incorrect input!");
+                }
+                else
+                {
+                    IMenuOption menuAction = menu.SelectMenuOption(input);
+                    if (menuAction == null)
+                    {
+                        Console.WriteLine("Incorrect input!");
+                    }
+                    else
+                    {
+                        Console.Clear();
+                        menuAction?.Action();
+                    }
+                }
             }
 
             var tasksService = scope.Resolve<TasksService>();
@@ -55,7 +72,7 @@ namespace QuizApp
             builder.RegisterType<DatabaseController>().AsImplementedInterfaces().InstancePerDependency();
             builder.RegisterType<Menu>().InstancePerDependency();
             builder.RegisterType<MenuView>().InstancePerDependency();
-            builder.RegisterType<MenuBuilder>().InstancePerDependency();
+            builder.RegisterType<QuestionBuilder>().InstancePerDependency();
             builder.RegisterType<TasksService>().SingleInstance();
 
             Container = builder.Build();

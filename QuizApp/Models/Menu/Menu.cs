@@ -13,7 +13,7 @@ namespace QuizApp.Models.Menu
 {
     public class Menu
     {
-        private readonly MenuBuilder _menuBuilder;
+        private readonly QuestionBuilder _questionBuilder;
         private readonly List<IMenuOption> _options = new List<IMenuOption>();
         private readonly IDatabase _db;
         private readonly TasksService _tasksService;
@@ -22,13 +22,13 @@ namespace QuizApp.Models.Menu
         public bool Exit { get; private set; }
 
         public Menu(
-            MenuBuilder menuBuilder,
+            QuestionBuilder questionBuilder,
             IDatabase db,
             TasksService tasksService
         )
         {
             _tasksService = tasksService;
-            _menuBuilder = menuBuilder;
+            _questionBuilder = questionBuilder;
             _db = db;
 
             _options.Add(new MenuOption { Text = "Exit", Action = () => ExitApplication() });
@@ -40,16 +40,33 @@ namespace QuizApp.Models.Menu
         {
             Console.WriteLine("Give me a quiz name!");
 
-            string quizName = Console.ReadLine();
-            Quiz newQuiz = Quiz.Create(quizName);
-            Console.Clear();
-
-            _menuBuilder.CreateQuestions(newQuiz);
-
-            if (newQuiz.HasQuestions)
+            while (true)
             {
-                _tasksService.AddTask(_db.SaveQuiz(newQuiz));
+                string quizName = Console.ReadLine();
+                var titleValidator = new TitleValidator();
+
+                if (titleValidator.Validate(quizName))
+                {
+                    Quiz newQuiz = new Quiz(quizName);
+                    Console.Clear();
+
+                    _questionBuilder.CreateQuestions(newQuiz);
+
+                    if (newQuiz.HasQuestions)
+                    {
+                        _tasksService.AddTask(_db.SaveQuiz(newQuiz));
+                    }
+
+                    break;
+                }
+
+                Console.WriteLine("Invalid quiz name!");
+                foreach (var validationError in titleValidator.ValidationErrors)
+                {
+                    Console.WriteLine(validationError);
+                }
             }
+
         }
 
         public void ExitApplication()
@@ -69,17 +86,10 @@ namespace QuizApp.Models.Menu
         }
 
 
-        public IMenuOption SelectMenuOption()
+        public IMenuOption SelectMenuOption(int selection)
         {
-            if (!Console.ReadLine().SelectIntParse(Options.Count, out int input))
-            {
-                Console.WriteLine("Incorrect input!");
-                return null;
-            }
-
-            IMenuOption selectedOption = Options[input - 1];
-
-            return selectedOption;
+            if (selection < 1 || selection > Options.Count) return null;
+            return Options[selection - 1];
         }
     }
 }
