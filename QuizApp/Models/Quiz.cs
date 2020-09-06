@@ -22,7 +22,7 @@ namespace QuizApp.Models
             Questions.Add(questionToAdd);
         }
 
-        public bool HasQuestions() => Questions.Count != 0;
+        public bool HasQuestions => Questions.Count != 0;
 
         public List<Question> Questions { get; } = new List<Question>();
     }

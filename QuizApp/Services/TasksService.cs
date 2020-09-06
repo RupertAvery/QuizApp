@@ -21,6 +21,6 @@ namespace QuizApp.Services
             _tasks.Remove(taskToRemove);
         }
 
-        public List<Task> GetTasks() => _tasks;
+        public Task[] Tasks => _tasks.ToArray();
     }
 }

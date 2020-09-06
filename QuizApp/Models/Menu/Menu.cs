@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Threading.Tasks;
 using QuizApp.Exceptions;
 using QuizApp.Interfaces;
@@ -8,52 +8,45 @@ using QuizApp.Models.Menu.Interfaces;
 using QuizApp.Models.Menu.Options;
 using QuizApp.Services;
 using QuizApp.Validators;
-using QuizApp.Views;
 
 namespace QuizApp.Models.Menu
 {
     public class Menu
     {
-        private readonly MenuView _menuView;
-        private readonly GameConfiguration _gameConfiguration;
-        private readonly Dictionary<string, IMenuOption> _options = new Dictionary<string, IMenuOption>();
+        private readonly MenuBuilder _menuBuilder;
+        private readonly List<IMenuOption> _options = new List<IMenuOption>();
         private readonly IDatabase _db;
         private readonly TasksService _tasksService;
 
-        public Dictionary<string, IMenuOption> GetOptions() => _options;
+        public List<IMenuOption> Options => _options;
+        public bool Exit { get; private set; }
 
         public Menu(
-            MenuView menuView,
-            GameConfiguration gameConfiguration,
+            MenuBuilder menuBuilder,
             IDatabase db,
             TasksService tasksService
-            )
+        )
         {
             _tasksService = tasksService;
-            _gameConfiguration = gameConfiguration;
-            _menuView = menuView;
+            _menuBuilder = menuBuilder;
             _db = db;
 
-            _options.Add("Exit", new MenuOptionExit(this));
-            _options.Add("New quiz", new MenuOptionNewQuiz(this));
-            _options.Add("Reply to created quiz", new MenuOptionReplyTo(this));
-        }
-
-        public void ShowMenu()
-        {
-            _menuView.ShowMenu(_options);
+            _options.Add(new MenuOption { Text = "Exit", Action = () => ExitApplication() });
+            _options.Add(new MenuOption { Text = "New Quiz", Action = () => CreateNewQuiz() });
+            _options.Add(new MenuOption { Text = "Reply to created quiz", Action = () => throw new NotImplementedException() });
         }
 
         public void CreateNewQuiz()
         {
-            _menuView.GiveQuizName();
+            Console.WriteLine("Give me a quiz name!");
+
             string quizName = Console.ReadLine();
             Quiz newQuiz = Quiz.Create(quizName);
             Console.Clear();
 
-            CreateQuestions(newQuiz);
+            _menuBuilder.CreateQuestions(newQuiz);
 
-            if (newQuiz.HasQuestions())
+            if (newQuiz.HasQuestions)
             {
                 _tasksService.AddTask(_db.SaveQuiz(newQuiz));
             }
@@ -63,8 +56,11 @@ namespace QuizApp.Models.Menu
         {
             try
             {
-                Task.WaitAll(_tasksService.GetTasks().ToArray());
-                Environment.Exit(1);
+                _tasksService.AddTask(Task.Delay(5000).ContinueWith((t) =>
+                {
+                    Console.WriteLine("Done waiting!");
+                }));
+                Exit = true;
             }
             catch (Exception ex)
             {
@@ -72,73 +68,16 @@ namespace QuizApp.Models.Menu
             }
         }
 
-        private void CreateQuestions(Quiz newQuiz)
-        {
-            _menuView.HowManyQuestions();
-            int maxNumberOfQuestions = _gameConfiguration.MaxQuestions;
-
-            if (!Console.ReadLine()
-                .ParseInRange(0, maxNumberOfQuestions, out int input))
-            {
-                Console.WriteLine("Incorrect input!");
-                return;
-            }
-            Console.Clear();
-            for (int i = 0; i < input; i++)
-            {
-                _menuView.AskForQuestion(i + 1);
-                string questionTitle = Console.ReadLine();
-                Question question = Question.Create(questionTitle);
-                Console.Clear();
-                CreateAnswers(question);
-                SelectCorrectAnswer(question);
-
-                newQuiz.AddQuestion(question);
-                Console.Clear();
-            }
-        }
-
-        private void CreateAnswers(Question currentQuestion)
-        {
-            int numberOfAnswers = _gameConfiguration.NumberOfAnswers;
-            for (int i = 0; i < numberOfAnswers; i++)
-            {
-                Console.Clear();
-                _menuView.AskForAnswer(i + 1);
-                Answer newAnswer = Answer.Create(Console.ReadLine());
-                currentQuestion.AddAnswer(newAnswer);
-            }
-        }
-
-        private void SelectCorrectAnswer(Question currentQuestion)
-        {
-            Console.Clear();
-            List<Answer> answers = currentQuestion.Answers;
-            List<string> answersTitle = answers.Select(x => x.Title).ToList();
-            _menuView.ShowAnswers(answersTitle);
-
-            if (Console.ReadLine().SelectIntParse(answersTitle.Count, out int input))
-            {
-                answers[input - 1].IsCorrect = true;
-            }
-            else
-            {
-                Console.WriteLine("Incorrect input");
-            }
-
-        }
 
         public IMenuOption SelectMenuOption()
         {
-            if (!Console.ReadLine().SelectIntParse(GetOptions().Count, out int input))
+            if (!Console.ReadLine().SelectIntParse(Options.Count, out int input))
             {
                 Console.WriteLine("Incorrect input!");
                 return null;
             }
 
-            List<IMenuOption> menuOptions = GetOptions().Select(x => x.Value).ToList();
-
-            IMenuOption selectedOption = menuOptions[input - 1];
+            IMenuOption selectedOption = Options[input - 1];
 
             return selectedOption;
         }

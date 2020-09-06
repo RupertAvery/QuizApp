@@ -1,20 +1,14 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using QuizApp.Controllers;
 using QuizApp.Interfaces;
 using QuizApp.Models.Menu.Interfaces;
 
 namespace QuizApp.Models.Menu.Options
 {
-    public abstract class MenuOption : IMenuOption
+    public class MenuOption : IMenuOption
     {
-        protected readonly Menu _menu;
-
-        protected MenuOption(Menu menu)
-        {
-            _menu = menu;
-        }
-
-
-        public abstract void Action();
+        public string Text { get; set; }
+        public Action Action { get; set; }
     }
 }
